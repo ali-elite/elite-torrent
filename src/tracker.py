@@ -1,12 +1,16 @@
 import argparse
 import asyncio
 import logging
+import os
 import string
 import sys
 import random
 from datetime import datetime, timedelta
 
+import aioconsole
+
 DEFAULT_INTERVAL = 10
+
 
 class EliteFile():
     def __init__(self, name, size):
@@ -14,11 +18,24 @@ class EliteFile():
         self.size = size
         self.logs = []
         self.seeders = {}
+        self.logger = self.set_logger()
 
     def __str__(self):
         return f'FILE({self.name}, {self.size})'
+
     def __repr__(self):
         return str(self)
+
+    def set_logger(self):
+        logger = logging.getLogger(f'{self.name}-logger')
+        formatter = logging.Formatter(
+            '%(asctime) -15s - %(levelname) -8s - %(message)s')
+        handler = logging.FileHandler(f'tracker-logs/{self.name}.log')
+        handler.setFormatter(formatter)
+        handler.setLevel(logging.INFO)
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+        return logger
 
 
 def get_random_string(length):
@@ -34,6 +51,7 @@ class UdpTrackerServer(asyncio.Protocol):
         self.logger = server.logger
         self.connection_lost_received = asyncio.Event()
         self.transport = None
+        self.file_logger = logging.getLogger('main-tracker-logger')
 
     def connection_made(self, transport):
         self.transport = transport
@@ -49,7 +67,9 @@ class UdpTrackerServer(asyncio.Protocol):
             response = get_random_string(10)
             self.server.peers.update({response: datetime.now()})
             self.transport.sendto(response.encode(), addr)
-            self.logger.info(f'client { response } joined!')
+            self.logger.info(f'client {response} has connected to the tracker!')
+            self.file_logger.info(f'client {response} has connected to the tracker! request type: first handshake')
+
 
         else:
             rsp = data.decode()
@@ -60,6 +80,8 @@ class UdpTrackerServer(asyncio.Protocol):
 
             elif rsp_arr[1].startswith('hBeat'):
                 self.server.peers.update({rsp_arr[0]: datetime.now()})
+                # too much log
+                # self.file_logger.info(f'client {rsp_arr} heartbeat ')
                 return
 
             elif rsp_arr[1].startswith('share'):
@@ -69,7 +91,9 @@ class UdpTrackerServer(asyncio.Protocol):
                 file = EliteFile(name=file_name, size=file_size)
                 file.seeders.update({rsp_arr[0]: listen_address})
                 self.server.files.append(file)
-                self.logger.warning('file shared!')
+                self.logger.info(f'client {rsp_arr[0]} shared the file {file_name} in the torrent')
+                file.logger.info(f'client {rsp_arr[0]} shared the file {file_name} in the torrent')
+                self.file_logger.info(f'client {rsp_arr[0]} shared the file {file_name} in the torrent')
                 return
 
             elif rsp_arr[1].startswith('seed'):
@@ -85,7 +109,12 @@ class UdpTrackerServer(asyncio.Protocol):
 
                 file.seeders.update({rsp_arr[0]: listen_address})
                 self.server.files.append(file)
-                self.logger.warning('file seeded!')
+                self.logger.info(f'client {rsp_arr[0]} received the file {file_name}'
+                                 f' successfully and is seeding the file in the torrent')
+                file.logger.info(f'client {rsp_arr[0]} received the file {file_name}'
+                                 f' successfully and is seeding the file in the torrent')
+                self.file_logger.info(f'client {rsp_arr[0]} received the file {file_name}'
+                                      f' successfully and is seeding the file in the torrent')
                 return
 
             elif rsp_arr[1].startswith('get'):
@@ -99,16 +128,20 @@ class UdpTrackerServer(asyncio.Protocol):
                     for idd, l_address in the_file.seeders.items():
                         if l_address != 'dis':
                             ans = ans + f'peer {idd} with listen address {l_address}@@'
-                    self.logger.warning(f'file list sent to the client {rsp_arr[0]}')
+                    self.logger.info(f'file list sent to the client {rsp_arr[0]}')
+                    the_file.logger.info(f'file list sent to the client {rsp_arr[0]}')
+                    the_file.logger.info(ans)
                 else:
                     ans = f'{rsp_arr[0]}%%nofile'
                     self.logger.warning('file was not available!')
+                    self.file_logger.warning(f'peer {rsp_arr[0]} has requested for a non-exist file')
                 self.transport.sendto(ans.encode(), addr)
                 return
 
             else:
                 self.logger.warning('Invalid message')
                 return
+
 
 class TrackerServer:
     def __init__(self,
@@ -119,6 +152,8 @@ class TrackerServer:
         self.interval = interval
         self.peers = {}
         self.files = []
+        self.file_logger = logging.getLogger('main-tracker-logger')
+        self.file_logger.info('tracker server started')
 
         if loop:
             self.loop = loop
@@ -132,6 +167,7 @@ class TrackerServer:
         self.is_closed = False
 
         self.loop.create_task(self.heartbeat_check())
+        self.get_input_task = self.loop.create_task(self.get_input())
 
     async def start(self):
         self.transport, self.proto = await self.loop.create_datagram_endpoint(
@@ -158,8 +194,37 @@ class TrackerServer:
                         for f in self.files:
                             if p in f.seeders.keys():
                                 f.seeders[p] = 'dis'
-                        self.logger.info(f'peer {p} has been removed.')
+                                f.logger.info(f'seeder {p} disconnected')
+                        self.logger.info(f'peer {p} disconnected and we removed it from the tracker.')
+                        self.file_logger.info(f'seeder {p} disconnected')
             await asyncio.sleep(DEFAULT_INTERVAL)
+
+    async def get_input(self):
+        while True:
+            question = await aioconsole.ainput('What can i Do for you?\n')
+            if question == 'request logs':
+
+                f = open("tracker-logs.log", "r")
+                print('you have requested for the request logs. here is your response:')
+                print(f.read())
+
+            elif question == 'file_logs_all':
+                print('you have requested for all files logs. here is your response:')
+                for f in os.listdir("tracker-logs/"):
+                    f = open(f'tracker-logs/{f}', "r")
+                    print(f.read())
+
+            elif question.startswith('file_logs>'):
+                q_arr = question.split('>')
+                try:
+                    print(f'you have requested for the file {q_arr[1]} logs. here is your response:')
+                    f = open(f"tracker-logs/{q_arr[1]}.log", "r")
+                    print(f.read())
+                except:
+                    print(f"there isn't a log for such a file called {q_arr[1]} in the torrent")
+
+
+            await asyncio.sleep(5)
 
 
 def end_point(v):
@@ -191,6 +256,18 @@ def setup_logging():
     return logger
 
 
+def setup_file_logging():
+    logger = logging.getLogger('main-tracker-logger')
+    formatter = logging.Formatter(
+        '%(asctime) -15s - %(levelname) -8s - %(message)s')
+    handler = logging.FileHandler('tracker-logs.log')
+    handler.setFormatter(formatter)
+    handler.setLevel(logging.INFO)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    return logger
+
+
 def main():
     parser = argparse.ArgumentParser(description='UDP tracker.')
     parser.add_argument(
@@ -200,6 +277,7 @@ def main():
 
     args = parser.parse_args()
     logger = setup_logging()
+    file_logger = setup_file_logging()
     loop = asyncio.get_event_loop()
 
     tracker = TrackerServer(local_addr=args.address,

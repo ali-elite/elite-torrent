@@ -104,7 +104,6 @@ class TrackerUDPClient:
                     peers_with_file = ans_arr[1].split('@@')
                     peers_with_file.remove(peers_with_file[len(peers_with_file) - 1])
                     self.logger.info('Peers with this file:')
-                    print(peers_with_file)
 
                     count = 0
                     for p in peers_with_file:
@@ -118,7 +117,6 @@ class TrackerUDPClient:
                     chosen_peer = peers_with_file[rand]
                     address = chosen_peer.split(' ')
                     address_arr = address[len(address) - 1].split(':')
-                    print(address_arr)
                     self.tcp_peer.wanted_address = listen_address
                     self.tcp_peer.file_name = file_name
                     self.loop.create_task(

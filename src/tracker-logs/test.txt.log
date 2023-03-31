@@ -1,0 +1,4 @@
+2023-03-31 17:42:40,138 - INFO     - client htnokpbugf shared the file test.txt in the torrent
+2023-03-31 17:43:51,338 - INFO     - file list sent to the client mxnhvjkder
+2023-03-31 17:43:51,338 - INFO     - mxnhvjkder%%peer htnokpbugf with listen address 127.0.0.1:1818@@
+2023-03-31 17:43:51,351 - INFO     - client mxnhvjkder received the file test.txt successfully and is seeding the file in the torrent
