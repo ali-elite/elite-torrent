@@ -30,7 +30,7 @@ class EliteFile():
         logger = logging.getLogger(f'{self.name}-logger')
         formatter = logging.Formatter(
             '%(asctime) -15s - %(levelname) -8s - %(message)s')
-        handler = logging.FileHandler(f'tracker-logs/{self.name}.log')
+        handler = logging.FileHandler(f'tracker-file-logs/{self.name}.log')
         handler.setFormatter(formatter)
         handler.setLevel(logging.INFO)
         logger.addHandler(handler)
@@ -204,21 +204,21 @@ class TrackerServer:
             question = await aioconsole.ainput('What can i Do for you?\n')
             if question == 'request logs':
 
-                f = open("tracker-logs.log", "r")
+                f = open("tracker-logs/tracker-logs.log", "r")
                 print('you have requested for the request logs. here is your response:')
                 print(f.read())
 
             elif question == 'file_logs_all':
                 print('you have requested for all files logs. here is your response:')
-                for f in os.listdir("tracker-logs/"):
-                    f = open(f'tracker-logs/{f}', "r")
+                for f in os.listdir("tracker-file-logs/"):
+                    f = open(f'tracker-file-logs/{f}', "r")
                     print(f.read())
 
             elif question.startswith('file_logs>'):
                 q_arr = question.split('>')
                 try:
                     print(f'you have requested for the file {q_arr[1]} logs. here is your response:')
-                    f = open(f"tracker-logs/{q_arr[1]}.log", "r")
+                    f = open(f"tracker-file-logs/{q_arr[1]}.log", "r")
                     print(f.read())
                 except:
                     print(f"there isn't a log for such a file called {q_arr[1]} in the torrent")
@@ -260,7 +260,7 @@ def setup_file_logging():
     logger = logging.getLogger('main-tracker-logger')
     formatter = logging.Formatter(
         '%(asctime) -15s - %(levelname) -8s - %(message)s')
-    handler = logging.FileHandler('tracker-logs.log')
+    handler = logging.FileHandler('tracker-logs/tracker-logs.log')
     handler.setFormatter(formatter)
     handler.setLevel(logging.INFO)
     logger.addHandler(handler)

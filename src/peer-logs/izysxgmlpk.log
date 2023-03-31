@@ -1,0 +1,4 @@
+2023-03-31 18:40:24,633 - INFO     - file test.txt with size 15 shared to the tracker
+2023-03-31 18:40:49,129 - INFO     - peer mvxpjfjuvx has requested for the file test.txt
+2023-03-31 18:40:49,129 - INFO     - file test.txt has been sent to the peer mvxpjfjuvx
+2023-03-31 18:40:49,129 - INFO     - peer mvxpjfjuvx has successfully received the file test.txt
