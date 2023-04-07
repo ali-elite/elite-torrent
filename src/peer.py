@@ -65,7 +65,7 @@ class TrackerUDPClient:
             self.sock.sendto(hb.encode())
             # too much log
             # self.file_logger.info(f"sending heartbeat")
-            await asyncio.sleep(5)
+            await asyncio.sleep(2)
 
     async def stop(self):
         try:

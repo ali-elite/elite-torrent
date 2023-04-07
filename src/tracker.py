@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 import aioconsole
 
-DEFAULT_INTERVAL = 10
+DEFAULT_INTERVAL = 4
 
 
 class EliteFile():
@@ -125,12 +125,19 @@ class UdpTrackerServer(asyncio.Protocol):
                         break
                 if the_file:
                     ans = f'{rsp_arr[0]}%%'
+                    check = 0
                     for idd, l_address in the_file.seeders.items():
                         if l_address != 'dis':
                             ans = ans + f'peer {idd} with listen address {l_address}@@'
-                    self.logger.info(f'file list sent to the client {rsp_arr[0]}')
-                    the_file.logger.info(f'file list sent to the client {rsp_arr[0]}')
-                    the_file.logger.info(ans)
+                            check = check + 1
+                    if check == 0:
+                        ans = f'{rsp_arr[0]}%%nofile'
+                        self.logger.warning('file was not available!')
+                        self.file_logger.warning(f'peer {rsp_arr[0]} has requested for a non-exist file')
+                    else:
+                        self.logger.info(f'file list sent to the client {rsp_arr[0]}')
+                        the_file.logger.info(f'file list sent to the client {rsp_arr[0]}')
+                        the_file.logger.info(ans)
                 else:
                     ans = f'{rsp_arr[0]}%%nofile'
                     self.logger.warning('file was not available!')
