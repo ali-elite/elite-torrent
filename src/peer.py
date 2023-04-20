@@ -116,7 +116,7 @@ class TrackerUDPClient:
                     f'file {file_name} with size {file_size} shared to the tracker')
 
                 self.loop.create_task(
-                    asyncio.start_server(self.tcp_peer.start_seeding, listen_address_arr[0], listen_address_arr[1]))
+                    asyncio.start_server(self.tcp_peer.start_seeding, listen_address_arr[0], listen_address_arr[1], limit=2**18))
                 self.is_seeder = True
 
 
@@ -193,7 +193,7 @@ class PeerTCPClient:
         self.is_seeder = True
         self.logger.info(f"seeding mode. waiting for a peer to request")
 
-        data = await asyncio.wait_for(reader.read(4096), timeout=10.0)
+        data = await asyncio.wait_for(reader.read(1000000), timeout=30.0)
 
         if data is None:
             self.logger.error(f"an error happened during receiving {self.file_name} : timeout")
@@ -211,18 +211,17 @@ class PeerTCPClient:
         self.tracker_client.file_logger.info(f"peer {msg_arr[0]} has requested for the file {msg_arr[1]}")
 
         try:
-            file = open(self.file_name, "r")
+            file = open(self.file_name, "rb")
         except:
             try:
-                file = open(self.token + '-' + self.file_name, "r")
+                file = open(self.token + '-' + self.file_name, "rb")
             except:
                 self.logger.error(f"couldn't find the file {msg_arr[1]}")
                 self.tracker_client.file_logger.error(f"couldn't find the file {msg_arr[1]}")
-                return
 
 
-        msg = file.read()
-        writer.write(msg.encode())
+        msg = file.read(1000000)
+        writer.write(msg)
         self.logger.info(f"file {msg_arr[1]} has been sent to the peer {msg_arr[0]}")
         self.tracker_client.file_logger.info(f"file {msg_arr[1]} has been sent to the peer {msg_arr[0]}")
 
@@ -233,18 +232,18 @@ class PeerTCPClient:
             self.tracker_client.file_logger.info(f"peer {msg_arr[0]} has successfully received the file {msg_arr[1]}")
 
     async def start_receiving(self, address, port):
-        reader, writer = await asyncio.open_connection(address, port)
+        reader, writer = await asyncio.open_connection(address, port, limit=2**18)
         writer.write(f'{self.token}%%{self.file_name}'.encode())
 
-        data = await asyncio.wait_for(reader.read(4096), timeout=10.0)
+        data = await asyncio.wait_for(reader.read(1000000), timeout=30.0)
 
         if data is None:
             self.logger.error(f"an error happened during receiving {self.file_name} :timeout")
             self.tracker_client.file_logger.error(f"an error happened during receiving {self.file_name} :timeout")
             return
 
-        message = data.decode()
-        f = open(self.token + '-' + self.file_name, "w+")
+        message = data
+        f = open(self.token + '-' + self.file_name, "wb")
         f.write(message)
 
         self.logger.info(f"file {self.file_name} has been received")
@@ -259,7 +258,7 @@ class PeerTCPClient:
         share_req = f'{self.token}%%seed%%{self.file_name}%%{file_size}%%{self.wanted_address}'
         self.tracker_client.sock.sendto(share_req.encode())
 
-        self.loop.create_task(asyncio.start_server(self.start_seeding, wanted_address[0], wanted_address[1]))
+        self.loop.create_task(asyncio.start_server(self.start_seeding, wanted_address[0], wanted_address[1], limit=2**18))
 
 
 def setup_logging():

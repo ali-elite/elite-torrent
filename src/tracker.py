@@ -137,7 +137,6 @@ class UdpTrackerServer(asyncio.Protocol):
                     else:
                         self.logger.info(f'file list sent to the client {rsp_arr[0]}')
                         the_file.logger.info(f'file list sent to the client {rsp_arr[0]}')
-                        the_file.logger.info(ans)
                 else:
                     ans = f'{rsp_arr[0]}%%nofile'
                     self.logger.warning('file was not available!')
